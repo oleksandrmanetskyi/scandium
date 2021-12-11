@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+      <UserSecretsId>6adb63a7-33f8-428f-8205-68edff248955</UserSecretsId>
+  </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="6.0.0" />
+      <PackageReference Include="Microsoft.Azure.SignalR" Version="1.13.0" />
+      <PackageReference Include="MongoDB.Driver" Version="2.14.1" />
+      <PackageReference Include="MongoDB.Driver.GridFS" Version="2.14.1" />
+    </ItemGroup>
+
+</Project>
