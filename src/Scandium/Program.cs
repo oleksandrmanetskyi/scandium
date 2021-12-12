@@ -1,6 +1,7 @@
 using MongoDB.Driver;
 using Scandium.Services;
 using Scandium.SignalR;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,16 +18,24 @@ builder.Host.ConfigureServices(services =>
         )
     );
     
-    services.AddScoped<MongoDbContext>(s => 
+    services.AddScoped(s => 
         new MongoDbContext(
             s.GetRequiredService<IMongoClient>(),
             builder.Configuration.GetConnectionString("DatabaseName")
         )
     );
 
-    services.AddScoped<GeneratorHelperService>();
+    services.AddScoped(s =>
+        ConnectionMultiplexer.Connect(
+            new ConfigurationOptions
+            {
+                EndPoints = { "scandium.redis.cache.windows.net:6380,password=Gd5ZyNMW8WBrJDyCjAEwC6S4ylWkQYW8XAzCaDXGf04=,ssl=True,abortConnect=False" }
+            })
+    );
+
+    services.AddScoped<GeneratorService>();
     services.AddScoped<JobService>();
-    services.AddTransient<ProgressReporterFactory>();
+    services.AddTransient<JobProgressReporterFactory>();
 });
 
 var app = builder.Build();
@@ -50,6 +59,6 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-app.MapHub<LoadingBarHub>("/loading-bar-progress");
+app.MapHub<LoadingHub>("progress-report/loading-bar-progress");
 
 app.Run();

@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Scandium.SignalR;
 
-public class LoadingBarHub: Hub
+public class LoadingHub: Hub
 {
-    
 }

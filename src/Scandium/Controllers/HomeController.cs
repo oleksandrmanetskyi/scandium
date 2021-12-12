@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Net;
-using System.Security;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages.Infrastructure;
+using MongoDB.Bson;
+using Scandium.Entities;
 using Scandium.Models;
 using Scandium.Services;
 using Scandium.SignalR;
@@ -12,20 +12,20 @@ namespace Scandium.Controllers;
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
-    private readonly ProgressReporterFactory _progressReporterFactory;
-    private readonly GeneratorHelperService _generatorHelperService;
+    private readonly JobProgressReporterFactory _jobProgressReporterFactory;
+    private readonly GeneratorService _generatorService;
     private readonly JobService _jobService;
 
     public HomeController(
         ILogger<HomeController> logger, 
-        ProgressReporterFactory progressReporterFactory, 
-        GeneratorHelperService generatorHelperService,
+        JobProgressReporterFactory jobProgressReporterFactory, 
+        GeneratorService generatorService,
         JobService jobService
         )
     {
         _logger = logger;
-        _progressReporterFactory = progressReporterFactory;
-        _generatorHelperService = generatorHelperService;
+        _jobProgressReporterFactory = jobProgressReporterFactory;
+        _generatorService = generatorService;
         _jobService = jobService;
     }
 
@@ -44,72 +44,47 @@ public class HomeController : Controller
     [Route("generate")]
     public async Task<IActionResult> Generate(GeneratorInputViewModel model, CancellationToken cancellationToken)
     {
-        _logger.LogInformation($"Start generating {model.NumberOfWords} words. ConnectionId: {model.ConnectionId}");
+        if (await _jobService.GetActiveJobsCount() >= 2)
+            return new BadRequestObjectResult("Too much job running at the same time");
         
-        await _jobService.CreateJob(model.ConnectionId);
+        _logger.LogInformation(
+            "{DateTime.Now} - {Dns.GetHostName()} - Start generating {model.NumberOfWords} words", 
+            DateTime.Now, Dns.GetHostName(), model.NumberOfWords);
         
-        var progressReporter = _progressReporterFactory.GetLoadingBarReporter(model.ConnectionId);
-        var vocabulary = (await _generatorHelperService.GetVocabulary()).ToList();
-        var vocabularySize = vocabulary.Count();
+        var job = await _jobService.CreateJob();
+        var progressReporter = _jobProgressReporterFactory.GetLoadingBarReporter(job.Id);
+        var stateReporter = _jobProgressReporterFactory.GetStateReporter(job.Id);
         
-        var random = new Random();
-
-        var previousWord = ".";
-        var result = string.Empty;
-
-        for (var i = 0; i < model.NumberOfWords; ++i)
+        #pragma warning disable CS4014
+        Task.Run( async () =>
         {
-            if (cancellationToken.IsCancellationRequested)
+            try
             {
-                await _jobService.CancelJob(model.ConnectionId);
-                return Content("Canceled");
+                await _generatorService.DoJob(
+                        model.NumberOfWords,
+                        cancellationToken,
+                        progressReporter)
+                    .ContinueWith(result => _jobService.DoneJob(job.Id, result.Result),
+                        cancellationToken);
+                stateReporter.ReportDoneState();
             }
-            
-            var wordNumber = random.Next(0, vocabularySize);
-            var currentWord = vocabulary[wordNumber].Content;
-
-            if (previousWord == currentWord)
+            catch (Exception e)
             {
-                --i;
-                continue;
+                _logger.LogError($"Exception: {e}. Job id: {job.Id}");
+                await _jobService.CancelJob(job.Id);
+                stateReporter.ReportCancelState();
             }
-            
-            if (previousWord == ".")
-            {
-                var firstLetter = char.ToUpper(currentWord[0]);
-                if (currentWord.Length == 1) currentWord = firstLetter.ToString();
-                else currentWord = firstLetter + currentWord.Substring(1);
-            }
+        }, cancellationToken);
+        #pragma warning restore CS4014
 
-            previousWord = currentWord;
+        return new OkObjectResult("Job started");
+    }
 
-            result += currentWord;
-
-            if (previousWord != "." && previousWord != "," && previousWord != " -")
-            {
-                var punctuationMark = string.Empty;
-                
-                if (random.NextDouble() <= 0.1) punctuationMark = ".";
-                else if (random.NextDouble() <= 0.2) punctuationMark = ",";
-                else if (random.NextDouble() <= 0.05) punctuationMark = " -";
-
-                if (punctuationMark != string.Empty)
-                {
-                    result += punctuationMark;
-                    previousWord = punctuationMark;
-                }
-            }
-
-            result += ' ';
-            
-            progressReporter.Report(1 / (double)model.NumberOfWords);
-
-            await Task.Delay(50);
-        }
-        
-        await _jobService.DoneJob(model.ConnectionId);
-
-        return Content(result);
+    [HttpGet("{id}")]
+    [Route("job-result/{id}")]
+    public async Task<IActionResult> GetJobResult()
+    {
+        return NoContent();
     }
 
     [HttpGet]
@@ -119,6 +94,20 @@ public class HomeController : Controller
         var content = await _jobService.GetJobs();
         return PartialView("_JobListPartial", content);
 
+    }
+
+    [HttpGet("{id}")]
+    [Route("job-details/{id}")]
+    public async Task<IActionResult> JobDetails(string id)
+    {
+        var job = await _jobService.GetJob(new ObjectId(id));
+        return View(new JobDetailsViewModel
+        {
+            Id = job.Id.ToString(),
+            CreateDateTime = job.CreateDateTime,
+            State = job.State,
+            Result = job.Result
+        });
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

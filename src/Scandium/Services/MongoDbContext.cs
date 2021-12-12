@@ -18,4 +18,6 @@ public class MongoDbContext
     // Collections
     public IMongoCollection<Word> Words => _database.GetCollection<Word>("words");
     public IMongoCollection<Job> Jobs => _database.GetCollection<Job>("jobs");
+    public IMongoCollection<JobConnectionId> JobsConnectionId => 
+        _database.GetCollection<JobConnectionId>("jobs-connection-id");
 }

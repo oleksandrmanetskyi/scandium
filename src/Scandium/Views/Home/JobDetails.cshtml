@@ -1,0 +1,61 @@
+@model JobDetailsViewModel
+
+@{
+    ViewData["Title"] = "Job details";
+    Layout = "_Layout";
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<div>
+    <div class="row mt-4 align-items-center">
+        <div class="col-4 fw-bold">Job id</div>
+        <div class="col-8">@Model?.Id</div>
+    </div>
+    
+    <div class="row mt-4 align-items-center">
+        <div class="col-4 fw-bold">Created at</div>
+        <div class="col-8">@Model?.CreateDateTime</div>
+    </div>
+    
+    <div class="row mt-4 align-items-center">
+        <div class="col-4 fw-bold">State</div>
+        <div class="col-8 align-items-center"><span id="job-state" class="badge @Html.GetBootstrapState(Model!.State)">@Model.State</span></div>
+    </div>
+    
+    <div class="row mt-4 align-items-center">
+        <div class="col-4 fw-bold">Progress</div>
+        <div class="col-8" id="div-loading">
+            <div class="progress m-auto">
+                <div class="progress-bar" role="progressbar" style="width: 0;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-3 mb-3">
+    <button type="button" id="loading-cancel" class="btn btn-sm btn-outline-secondary">Cancel</button>
+</div>
+
+<div class="mt-4 form-group">
+    <textarea id="result-text-area" class="form-control" rows="24">@Model.Result</textarea>
+</div>
+
+@section Scripts
+{
+    <script type="text/javascript">  
+    
+    $(document).ready(function () {
+        let jobState = $("#job-state").text();
+        if (jobState === "Done") {
+            setProgress(100);
+        }
+        else {
+            connectProgressBar();
+        }
+        window.setTimeout(hideSplashScreen, 3000);
+    });
+   
+    </script>
+}
+

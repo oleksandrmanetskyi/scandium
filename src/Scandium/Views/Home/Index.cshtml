@@ -1,53 +1,68 @@
 ﻿@model GeneratorInputViewModel
 
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Dashboard";
 }
 
 <div class="text-center">
     <h1 class="display-4">The slowest text generator</h1>
     
-    <div class="row mt-3 g-3 justify-content-center" id="div-generate">
+    <div class="row g-2 mt-2 justify-content-center" id="div-generate">
+        <div class="text-muted">Input number of words and click Generate button</div>
         <div class="col-auto">
             <input asp-for="NumberOfWords" type="number" min="1" step="1" max="5000" value="1000" class="form-control" placeholder="Number of words">
         </div>
         <div class="col-auto">
-            <button type="submit" class="btn btn-primary mb-3" id="btn-load">Generate</button>
-        </div>
-    </div>
-    
-    <div style="display: none;" class="justify-content-center mt-3 m-auto" id="div-loading">
-        <div class="progress w-50 m-auto">
-            <div class="progress-bar" role="progressbar" style="width: 0;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-        </div>
-        
-        <div class="text-center mt-3 mb-3">
-            <button type="button" id="loading-cancel" class="btn btn-sm btn-outline-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary mb-3" id="btn-load">
+                <span id="loading-spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Generate
+            </button>
         </div>
     </div>
 </div>
 
 <div id="final-result" class="mt-3"></div>
 
-<div class="mt-3">
-    <a class="mt-1 nav-link text-center" href="javascript:loadJobList()">Reload</a> 
-    <div id="job-list" class="mt-1">
-        <div class="text-center" id="loading">
-            <div class="spinner-border" role="status"></div>
-        </div>
+<div id="job-list" class="mt-2 g-2">
+    <div class="d-flex justify-content-between align-items-center">
+        <h4>Job list</h4>
+        <a class="link-dark fs-4" href="javascript:loadJobList()"><i class="bi bi-arrow-clockwise"></i></a>
+    </div>
+    
+    <div id="job-list-result"></div>
+    
+    <div class="text-center" id="loading-spinner">
+        <div class="spinner-border" role="status"></div>
     </div>
 </div>
+
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div class="toast align-items-center text-white bg-primary border-0" role="alert" id="status-toast" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+          <div class="toast-body" id="toast-message"></div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+</div>
+
 
 @section Scripts
 {
     <script type="text/javascript">  
     
     $(document).ready(function () {
-        const interval = setInterval(updateJobList, 5000);
-    });
-    
-    function updateJobList() {
         loadJobList();
-    }
+        window.setTimeout(hideSplashScreen, 1000);
+        const interval = setInterval(loadJobList, 30000);
+        
+        $("#btn-load #loading-spinner").hide();
+        
+        $(document).on("click", "#btn-load", function () {
+            $("#btn-load #loading-spinner").show();
+            $("#btn-load").prop('disabled', true);
+            startJob();
+        });
+    });
+   
     </script>
 }
