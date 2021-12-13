@@ -7,10 +7,12 @@ namespace Scandium.Services;
 public class GeneratorService
 {
     private readonly MongoDbContext _dbContext;
+    private readonly JobService _jobService;
     
-    public GeneratorService(MongoDbContext dbContext)
+    public GeneratorService(MongoDbContext dbContext, JobService jobService)
     {
         _dbContext = dbContext;
+        _jobService = jobService;
     }
 
     public async Task<IEnumerable<Word>> GetVocabulary()

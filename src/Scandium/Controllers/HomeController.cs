@@ -66,11 +66,13 @@ public class HomeController : Controller
                         progressReporter)
                     .ContinueWith(result => _jobService.DoneJob(job.Id, result.Result),
                         cancellationToken);
+                if ((await _jobService.GetJob(job.Id)).State == JobState.Canceled) throw new TaskCanceledException();
                 stateReporter.ReportDoneState();
             }
             catch (Exception e)
             {
-                _logger.LogError($"Exception: {e}. Job id: {job.Id}");
+                _logger.LogError("{DateTime.Now} - {Dns.GetHostName()} - Exception: {e.Message}. Job id: {job.Id}",
+                    DateTime.Now, Dns.GetHostName(), e.Message, job.Id);
                 await _jobService.CancelJob(job.Id);
                 stateReporter.ReportCancelState();
             }
@@ -80,11 +82,12 @@ public class HomeController : Controller
         return new OkObjectResult("Job started");
     }
 
-    [HttpGet("{id}")]
-    [Route("job-result/{id}")]
-    public async Task<IActionResult> GetJobResult()
+    [HttpPost]
+    [Route("job-cancel/{id}")]
+    public async Task<IActionResult> CancelJob(string jobId)
     {
-        return NoContent();
+        await _jobService.CancelJob(new ObjectId(jobId));
+        return new OkResult();
     }
 
     [HttpGet]

@@ -105,9 +105,23 @@ function connectProgressBar() {
         })
 }
 
+function getLastPartUrl() {
+    let url = $(location).attr('href'),
+        parts = url.split("/");
+    return parts[parts.length - 1];
+}
+
 function bindAbort(jqXHR) {
     $(document).on("click", "#loading-cancel", function () {
         jqXHR.abort();
+        $.ajax({
+            type: "GET",
+            contentType: "application/json",
+            traditional: true,
+            url: "/job-cancel/" + getLastPartUrl(),
+            success: function (result) {
+            },
+        })
     });
 }
 

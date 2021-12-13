@@ -55,7 +55,9 @@ public class JobService
     public async Task CancelJob(ObjectId id)
     {
         var filter = Builders<Job>.Filter.Eq(j => j.Id, id);
-        var update = Builders<Job>.Update.Set(j => j.State, JobState.Canceled);
+        var update = Builders<Job>.Update
+            .Set(j => j.State, JobState.Canceled)
+            .Set(j => j.Result, String.Empty);
         await _dbContext.Jobs.UpdateOneAsync(filter, update);
     }
 
